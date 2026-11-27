@@ -69,6 +69,8 @@ if(!S.card){var d0=new Date();S.card={num:"5412"+rnd(12),nome:"TITULAR KGM",exp:
 if(!S.card.z){S.card.limite=0;S.card.z=1;save()}
 if(!S.z0){S.z0=1;if(S.saldo>0)S.tx.unshift({id:Date.now(),tipo:"out",desc:"Saldo zerado",v:S.saldo,t:Date.now()});S.saldo=0;save()}
 if(!S.x0){S.x0=1;S.tx=[];save()}
+var logged=false;try{logged=!!S.user&&sessionStorage.getItem("kgm-s")===S.user.email}catch(e){}
+function hp(p){var h=5381;for(var i=0;i<p.length;i++)h=((h<<5)+h+p.charCodeAt(i))|0;return String(h)}
 if(!S.b250){S.b250=1;S.saldo+=25000000;S.tx.unshift({id:Date.now(),tipo:"in",desc:"Saldo adicionado",v:25000000,t:Date.now()});save()}
 var tab="home",pix=null,done=null,addOpen=false,showNum=false,cmsg="";
 
@@ -97,6 +99,7 @@ function homeView(){
   h+='<div class="hero"><div class="l">Saldo disponível</div><div class="v">'+money(S.saldo)+'</div><div class="row"><button class="btn" data-go="pix">Fazer Pix</button><button class="btn alt" id="addb">Adicionar dinheiro</button></div></div>';
   if(addOpen)h+='<div class="panel"><h2>Adicionar dinheiro</h2><label for="dep">Valor (R$)</label><input id="dep" inputmode="decimal" placeholder="0,00"><p class="err" id="e1" role="alert"></p><div class="row"><button class="btn" id="depok">Adicionar</button><button class="btn alt" id="depx" style="color:var(--ink)">Cancelar</button></div></div>';
   h+='<div class="panel"><h2>Últimas movimentações</h2>'+txHtml(S.tx.slice(0,4))+'</div>';
+  h+='<button class="btn alt" id="lout" style="width:100%;margin-top:16px;color:var(--ink)">Sair ('+esc(S.user.email)+')</button>';
   h+='<p class="note">Este app é uma simulação. Nenhum dinheiro real é movimentado.</p>';
   return h;
 }
@@ -118,11 +121,16 @@ function cardView(){
   h+='<div class="panel"><h2>Simular compra</h2><label for="cdesc" style="margin-top:0">Descrição</label><input id="cdesc" autocomplete="off" placeholder="Ex.: Loja, app, restaurante"><label for="cval">Valor (R$)</label><input id="cval" inputmode="decimal" placeholder="0,00"><p class="err" id="e3" role="alert"></p>'+(cmsg?'<p class="note" style="color:var(--pos);margin:0 0 10px">'+esc(cmsg)+'</p>':'')+'<div class="row"><button class="btn" id="cdeb">Pagar no débito</button><button class="btn alt" id="ccred" style="color:var(--ink)">Pagar no crédito</button></div></div>';
   return h+'<p class="note">Cartão fictício. Débito sai do saldo; crédito vai para a fatura.</p>';
 }
+function loginView(){
+  var novo=!S.user,t=novo?"Criar conta":"Entrar";
+  return'<div class="top"><h1>KGM BANK</h1></div><div class="panel" style="margin-top:0"><h2>'+t+'</h2><label for="lemail" style="margin-top:0">E-mail</label><input id="lemail" type="email" autocomplete="email" placeholder="voce@email.com" value="'+(novo?"":esc(S.user.email))+'"><label for="lpass">Senha</label><input id="lpass" type="password" autocomplete="'+(novo?"new-password":"current-password")+'" placeholder="Mínimo 6 caracteres"><p class="err" id="e5" role="alert"></p><button class="btn" id="lok" style="width:100%">'+t+'</button>'+(novo?"":'<button class="btn alt" id="lforgot" style="width:100%;margin-top:10px;color:var(--ink)">Esqueci a senha</button>')+'</div><p class="note">Login simulado: e-mail e senha ficam só neste navegador.</p>';
+}
 function extView(){
   return'<div class="top"><h1>Extrato</h1></div><div class="panel" style="margin-top:0">'+txHtml(S.tx)+'</div>';
 }
 function render(){
   var app=document.getElementById("app");
+  if(!logged){app.innerHTML=loginView();document.getElementById("nav").innerHTML="";bind();return}
   app.innerHTML=tab==="home"?homeView():tab==="pix"?pixView():tab==="card"?cardView():extView();
   document.getElementById("nav").innerHTML=[["home","Início"],["pix","Pix"],["card","Cartão"],["ext","Extrato"]].map(function(t){return'<button class="tab" data-go="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':"")+'>'+t[1]+'</button>'}).join("");
   bind();
@@ -152,6 +160,22 @@ function bind(){
     add("out","Pix para "+pix.chave,pix.v);
     done={chave:pix.chave,v:pix.v,t:Date.now()};pix=null;render();
   };
+  if($("lok")){
+    $("lpass").onkeydown=function(ev){if(ev.key==="Enter")$("lok").click()};
+    $("lok").onclick=function(){
+      var em=$("lemail").value.trim().toLowerCase(),pw=$("lpass").value,e=$("e5");
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){e.textContent="Digite um e-mail válido.";return}
+      if(pw.length<6){e.textContent="A senha precisa ter pelo menos 6 caracteres.";return}
+      if(!S.user){S.user={email:em,h:hp(pw)};save()}
+      else if(S.user.email!==em||S.user.h!==hp(pw)){e.textContent="E-mail ou senha incorretos.";return}
+      logged=true;try{sessionStorage.setItem("kgm-s",em)}catch(x){}
+      tab="home";render();
+    };
+  }
+  if($("lforgot"))$("lforgot").onclick=function(){
+    if(confirm("Redefinir o acesso? Você cria um novo e-mail e senha. Seus dados do app são mantidos.")){delete S.user;save();render()}
+  };
+  if($("lout"))$("lout").onclick=function(){logged=false;try{sessionStorage.removeItem("kgm-s")}catch(x){}render()};
   if($("cshow"))$("cshow").onclick=function(){showNum=!showNum;render()};
   if($("cfrz"))$("cfrz").onclick=function(){S.card.frozen=!S.card.frozen;cmsg="";save();render()};
   if($("cpay"))$("cpay").onclick=function(){
