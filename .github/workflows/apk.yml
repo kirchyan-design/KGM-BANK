@@ -28,13 +28,20 @@ jobs:
 
       - name: Montar projeto Android
         run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          URL="https://${OWNER}.github.io/${REPO}/"
+          echo "O app vai carregar: $URL"
           mkdir -p www
           cp index.html manifest.json sw.js icon-192.png icon-512.png logo.png www/
           npm init -y
           npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
-          npx cap init "KGM BANK" com.kgm.bank --web-dir=www
+          node -e 'require("fs").writeFileSync("capacitor.config.json",JSON.stringify({appId:"com.kgm.bank",appName:"KGM BANK",webDir:"www",server:{url:process.argv[1],androidScheme:"https"}},null,2))' "$URL"
           npx cap add android
           npx cap sync android
+          # versionCode sobe a cada build, para o Android aceitar instalar por cima
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          grep -n "versionCode" android/app/build.gradle
 
       - name: Compilar APK
         working-directory: android
@@ -42,11 +49,26 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
 
+      - name: Assinar com a chave fixa
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ] || [ -z "$KS_PASS" ]; then
+            echo "::error::Faltam os secrets KEYSTORE_BASE64 e KEYSTORE_PASSWORD (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/kgm.jks"
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" sign --ks "$RUNNER_TEMP/kgm.jks" --ks-key-alias kgm --ks-pass env:KS_PASS --key-pass env:KS_PASS \
+            --out android/app/build/outputs/apk/debug/KGM-BANK.apk android/app/build/outputs/apk/debug/app-debug.apk
+          "$APKSIGNER" verify --print-certs android/app/build/outputs/apk/debug/KGM-BANK.apk
+
       - name: Guardar APK (aba Artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: KGM-BANK-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/KGM-BANK.apk
           if-no-files-found: error
 
       - name: Publicar em Releases (link direto p/ baixar no celular)
@@ -54,4 +76,4 @@ jobs:
         with:
           tag_name: apk-latest
           name: KGM BANK APK
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          files: android/app/build/outputs/apk/debug/KGM-BANK.apk
