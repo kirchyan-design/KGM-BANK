@@ -65,8 +65,7 @@ nav .in2{max-width:480px;margin:0 auto;display:flex;gap:6px}
 var KEY="mare-banco-v1";
 var fmt=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 var S=load();
-if(!S.card){var d0=new Date();S.card={num:"5412"+rnd(12),nome:"TITULAR KGM",exp:("0"+(d0.getMonth()+1)).slice(-2)+"/"+String((d0.getFullYear()+5)%100),cvv:rnd(3),frozen:false,limite:0,used:0,z:1};save()}
-if(!S.card.z){S.card.limite=0;S.card.z=1;save()}
+if(!S.card){var d0=new Date();S.card={num:"5412"+rnd(12),nome:"TITULAR KGM",exp:("0"+(d0.getMonth()+1)).slice(-2)+"/"+String((d0.getFullYear()+5)%100),cvv:rnd(3),frozen:false};save()}
 if(!S.z0){S.z0=1;if(S.saldo>0)S.tx.unshift({id:Date.now(),tipo:"out",desc:"Saldo zerado",v:S.saldo,t:Date.now()});S.saldo=0;save()}
 if(!S.x0){S.x0=1;S.tx=[];save()}
 var logged=false;try{logged=!!S.user&&sessionStorage.getItem("kgm-s")===S.user.email}catch(e){}
@@ -117,9 +116,8 @@ function cardView(){
   var h='<div class="top"><h1>Cartão virtual</h1><small>Saldo '+money(S.saldo)+'</small></div>';
   h+='<div class="vcard'+(c.frozen?' off':'')+'"><div class="t"><span>KGM BANK</span><span>'+(c.frozen?'BLOQUEADO':'VIRTUAL')+'</span></div><div class="n">'+shown+'</div><div class="m"><span>'+esc(c.nome)+'</span><span>Val '+c.exp+'</span><span>CVV '+(showNum?c.cvv:"\u2022\u2022\u2022")+'</span></div></div>';
   h+='<div class="row" style="margin-top:12px"><button class="btn alt" id="cshow" style="color:var(--ink)">'+(showNum?"Ocultar dados":"Mostrar dados")+'</button><button class="btn alt" id="cfrz" style="color:var(--ink)">'+(c.frozen?"Desbloquear":"Bloquear")+'</button></div>';
-  h+='<div class="panel"><h2>Crédito</h2><dl class="sum"><div><dt>Limite</dt><dd>'+money(c.limite)+'</dd></div><div><dt>Fatura atual</dt><dd>'+money(c.used)+'</dd></div><div><dt>Disponível</dt><dd>'+money(Math.max(0,c.limite-c.used))+'</dd></div></dl><p class="err" id="e4" role="alert"></p><button class="btn" id="cpay" style="width:100%">Pagar fatura</button></div>';
-  h+='<div class="panel"><h2>Simular compra</h2><label for="cdesc" style="margin-top:0">Descrição</label><input id="cdesc" autocomplete="off" placeholder="Ex.: Loja, app, restaurante"><label for="cval">Valor (R$)</label><input id="cval" inputmode="decimal" placeholder="0,00"><p class="err" id="e3" role="alert"></p>'+(cmsg?'<p class="note" style="color:var(--pos);margin:0 0 10px">'+esc(cmsg)+'</p>':'')+'<div class="row"><button class="btn" id="cdeb">Pagar no débito</button><button class="btn alt" id="ccred" style="color:var(--ink)">Pagar no crédito</button></div></div>';
-  return h+'<p class="note">Cartão fictício. Débito sai do saldo; crédito vai para a fatura.</p>';
+  h+='<div class="panel"><h2>Simular compra</h2><label for="cdesc" style="margin-top:0">Descrição</label><input id="cdesc" autocomplete="off" placeholder="Ex.: Loja, app, restaurante"><label for="cval">Valor (R$)</label><input id="cval" inputmode="decimal" placeholder="0,00"><p class="err" id="e3" role="alert"></p>'+(cmsg?'<p class="note" style="color:var(--pos);margin:0 0 10px">'+esc(cmsg)+'</p>':'')+'<div class="row"><button class="btn" id="cdeb">Pagar no débito</button></div></div>';
+  return h+'<p class="note">Cartão fictício. Débito sai do saldo.</p>';
 }
 function loginView(){
   var novo=!S.user,t=novo?"Criar conta":"Entrar";
@@ -178,12 +176,6 @@ function bind(){
   if($("lout"))$("lout").onclick=function(){logged=false;try{sessionStorage.removeItem("kgm-s")}catch(x){}render()};
   if($("cshow"))$("cshow").onclick=function(){showNum=!showNum;render()};
   if($("cfrz"))$("cfrz").onclick=function(){S.card.frozen=!S.card.frozen;cmsg="";save();render()};
-  if($("cpay"))$("cpay").onclick=function(){
-    var c=S.card,e=$("e4");
-    if(c.used<=0){e.textContent="Sua fatura está zerada.";return}
-    if(c.used>S.saldo){e.textContent="Saldo insuficiente para pagar a fatura.";return}
-    add("out","Pagamento da fatura",c.used);c.used=0;cmsg="Fatura paga.";save();render();
-  };
   function buy(kind){
     var c=S.card,e=$("e3"),v=parse($("cval").value),d=$("cdesc").value.trim()||"Compra";
     if(c.frozen){e.textContent="Cartão bloqueado. Desbloqueie para comprar.";return}
@@ -191,14 +183,10 @@ function bind(){
     if(kind==="deb"){
       if(v>S.saldo){e.textContent="Saldo insuficiente. Você tem "+money(S.saldo)+" disponível.";return}
       add("out","Débito: "+d,v);cmsg="Compra aprovada no débito.";
-    }else{
-      if(c.used+v>c.limite){e.textContent="Limite insuficiente. Disponível: "+money(Math.max(0,c.limite-c.used))+".";return}
-      c.used+=v;S.tx.unshift({id:Date.now(),tipo:"cred",desc:"Crédito: "+d,v:v,t:Date.now()});cmsg="Compra aprovada no crédito.";save();
     }
     render();
   }
   if($("cdeb"))$("cdeb").onclick=function(){buy("deb")};
-  if($("ccred"))$("ccred").onclick=function(){buy("cred")};
   if($("newpix"))$("newpix").onclick=function(){done=null;render()};
 }
 render();
