@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>KGM BANK</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#EEF2F8;--card:#fff;--ink:#14213D;--mute:#5C6785;--line:#D9E0EC;--acc:#3F37C9;--on-acc:#fff;--pos:#0B7A52;--neg:#C0322A;--hero:#14213D;--on-hero:#fff;color-scheme:light}
@@ -70,7 +74,7 @@ nav .in2{max-width:480px;margin:0 auto;display:flex;gap:6px}
 var KEY="mare-banco-v1";
 var fmt=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 var S=load();
-if(!S.card){var d0=new Date();S.card={num:"5412"+rnd(12),nome:"TITULAR KGM",exp:("0"+(d0.getMonth()+1)).slice(-2)+"/"+String((d0.getFullYear()+5)%100),cvv:rnd(3),frozen:false};save()}
+if(!S.card){var d0=new Date();S.card={num:"5412"+rnd(12),nome:"TITULAR KGM",exp:("0"+(d0.getMonth()+1)).slice(-2)+"/"+("0"+((d0.getFullYear()+5)%100)).slice(-2),cvv:rnd(3),frozen:false};save()}
 if(!S.z0){S.z0=1;if(S.saldo>0)S.tx.unshift({id:Date.now(),tipo:"out",desc:"Saldo zerado",v:S.saldo,t:Date.now()});S.saldo=0;save()}
 if(!S.x0){S.x0=1;S.tx=[];save()}
 var logged=false;try{logged=!!S.user&&sessionStorage.getItem("kgm-s")===S.user.email}catch(e){}
@@ -90,7 +94,7 @@ function rnd(n){var r="";for(var i=0;i<n;i++)r+=Math.floor(Math.random()*10);ret
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function money(c){return fmt.format(c/100)}
-function parse(s){var n=Number(String(s).replace(/[^\d,.]/g,"").replace(/\./g,"").replace(",","."));return isFinite(n)?Math.round(n*100):0}
+function parse(s){s=String(s).replace(/[^\d,.]/g,"");var n;if(s.indexOf(",")>-1)n=Number(s.replace(/\./g,"").replace(",","."));else if(/^\d+\.\d{1,2}$/.test(s))n=Number(s);else n=Number(s.replace(/\./g,""));return isFinite(n)?Math.round(n*100):0}
 function when(t){return new Date(t).toLocaleString("pt-BR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}
 function txHtml(list){
   if(!list.length)return'<p class="empty">Nenhuma movimentação ainda. Faça um Pix ou adicione dinheiro.</p>';
@@ -133,7 +137,9 @@ function extView(){
 }
 function render(){
   var app=document.getElementById("app");
-  if(!logged){app.innerHTML=loginView();document.getElementById("nav").innerHTML="";bind();return}
+  var navEl=document.querySelector("nav");
+  if(!logged){app.innerHTML=loginView();document.getElementById("nav").innerHTML="";navEl.style.display="none";bind();return}
+  navEl.style.display="";
   app.innerHTML=tab==="home"?homeView():tab==="pix"?pixView():tab==="card"?cardView():extView();
   document.getElementById("nav").innerHTML=[["home","Início"],["pix","Pix"],["card","Cartão"],["ext","Extrato"]].map(function(t){return'<button class="tab" data-go="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':"")+'>'+t[1]+'</button>'}).join("");
   bind();
@@ -164,7 +170,7 @@ function bind(){
     done={chave:pix.chave,v:pix.v,t:Date.now()};pix=null;render();
   };
   if($("lok")){
-    $("lpass").onkeydown=function(ev){if(ev.key==="Enter")$("lok").click()};
+    $("lpass").onkeydown=$("lemail").onkeydown=function(ev){if(ev.key==="Enter")$("lok").click()};
     $("lok").onclick=function(){
       var em=$("lemail").value.trim().toLowerCase(),pw=$("lpass").value,e=$("e5");
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){e.textContent="Digite um e-mail válido.";return}
