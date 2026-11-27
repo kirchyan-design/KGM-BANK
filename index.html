@@ -195,6 +195,7 @@ function bind(){
   if($("newpix"))$("newpix").onclick=function(){done=null;render()};
 }
 render();
+try{if("serviceWorker"in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register("sw.js")}catch(x){}
 (function(){
   var p=document.getElementById("ptr"),y0=null,d=0,busy=false,TH=70;
   function top(){return(window.scrollY||document.documentElement.scrollTop||0)<=0}
