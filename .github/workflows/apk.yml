@@ -33,7 +33,7 @@ jobs:
           URL="https://${OWNER}.github.io/${REPO}/"
           echo "O app vai carregar: $URL"
           mkdir -p www
-          cp index.html manifest.json sw.js icon-192.png icon-512.png logo.png www/
+          cp index.html manifest.json sw.js icon-192.png icon-512.png icon-512-maskable.png logo.png www/
           npm init -y
           npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
           node -e 'require("fs").writeFileSync("capacitor.config.json",JSON.stringify({appId:"com.kgm.bank",appName:"KGM BANK",webDir:"www",server:{url:process.argv[1],androidScheme:"https"}},null,2))' "$URL"
