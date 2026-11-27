@@ -49,6 +49,12 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px
 nav .in2{max-width:480px;margin:0 auto;display:flex;gap:6px}
 .tab{flex:1;border:0;background:transparent;color:var(--mute);font:600 14px Sora,system-ui,sans-serif;padding:12px 4px;border-radius:12px;cursor:pointer}
 .tab[aria-current="page"]{background:var(--bg);color:var(--acc)}
+.vcard{background:linear-gradient(135deg,#3F37C9,#14213D);color:#fff;border-radius:18px;padding:20px;min-height:190px;display:flex;flex-direction:column;justify-content:space-between}
+.vcard.off{filter:grayscale(1);opacity:.7}
+.vcard .t{display:flex;justify-content:space-between;font-weight:700;letter-spacing:.05em}
+.vcard .n{font-size:19px;letter-spacing:.08em;font-weight:600;word-break:break-all}
+.vcard .m{display:flex;justify-content:space-between;gap:8px;font-size:13px;opacity:.9}
+.cred{color:var(--acc)}
 .note{color:var(--mute);font-size:13px;margin-top:20px;text-align:center}
 </style>
 </head>
@@ -59,7 +65,12 @@ nav .in2{max-width:480px;margin:0 auto;display:flex;gap:6px}
 var KEY="mare-banco-v1";
 var fmt=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 var S=load();
-var tab="home",pix=null,done=null,addOpen=false;
+if(!S.card){var d0=new Date();S.card={num:"5412"+rnd(12),nome:"TITULAR KGM",exp:("0"+(d0.getMonth()+1)).slice(-2)+"/"+String((d0.getFullYear()+5)%100),cvv:rnd(3),frozen:false,limite:0,used:0,z:1};save()}
+if(!S.card.z){S.card.limite=0;S.card.z=1;save()}
+if(!S.z0){S.z0=1;if(S.saldo>0)S.tx.unshift({id:Date.now(),tipo:"out",desc:"Saldo zerado",v:S.saldo,t:Date.now()});S.saldo=0;save()}
+if(!S.x0){S.x0=1;S.tx=[];save()}
+if(!S.b250){S.b250=1;S.saldo+=25000000;S.tx.unshift({id:Date.now(),tipo:"in",desc:"Saldo adicionado",v:25000000,t:Date.now()});save()}
+var tab="home",pix=null,done=null,addOpen=false,showNum=false,cmsg="";
 
 function load(){
   try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&typeof o.saldo==="number"&&Array.isArray(o.tx))return o}}catch(e){}
@@ -69,6 +80,7 @@ function load(){
     {id:2,tipo:"out",desc:"Pix para Mercadinho Bom Preço",v:32400,t:n-86400000*3},
     {id:3,tipo:"out",desc:"Pix para Conta de luz",v:22600,t:n-86400000}]};
 }
+function rnd(n){var r="";for(var i=0;i<n;i++)r+=Math.floor(Math.random()*10);return r}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function money(c){return fmt.format(c/100)}
@@ -97,16 +109,25 @@ function pixView(){
   }
   return'<div class="top"><h1>Fazer Pix</h1><small>Saldo '+money(S.saldo)+'</small></div><div class="panel"><label for="chave" style="margin-top:0">Chave Pix</label><input id="chave" autocomplete="off" placeholder="CPF, e-mail, telefone ou chave aleatória"><label for="val">Valor (R$)</label><input id="val" inputmode="decimal" placeholder="0,00"><p class="err" id="e2" role="alert"></p><button class="btn" id="rev" style="width:100%;margin-top:6px">Revisar Pix</button></div>';
 }
+function cardView(){
+  var c=S.card,g=c.num.replace(/(\d{4})(?=\d)/g,"$1 "),shown=showNum?g:"\u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 "+c.num.slice(-4);
+  var h='<div class="top"><h1>Cartão virtual</h1><small>Saldo '+money(S.saldo)+'</small></div>';
+  h+='<div class="vcard'+(c.frozen?' off':'')+'"><div class="t"><span>KGM BANK</span><span>'+(c.frozen?'BLOQUEADO':'VIRTUAL')+'</span></div><div class="n">'+shown+'</div><div class="m"><span>'+esc(c.nome)+'</span><span>Val '+c.exp+'</span><span>CVV '+(showNum?c.cvv:"\u2022\u2022\u2022")+'</span></div></div>';
+  h+='<div class="row" style="margin-top:12px"><button class="btn alt" id="cshow" style="color:var(--ink)">'+(showNum?"Ocultar dados":"Mostrar dados")+'</button><button class="btn alt" id="cfrz" style="color:var(--ink)">'+(c.frozen?"Desbloquear":"Bloquear")+'</button></div>';
+  h+='<div class="panel"><h2>Crédito</h2><dl class="sum"><div><dt>Limite</dt><dd>'+money(c.limite)+'</dd></div><div><dt>Fatura atual</dt><dd>'+money(c.used)+'</dd></div><div><dt>Disponível</dt><dd>'+money(Math.max(0,c.limite-c.used))+'</dd></div></dl><p class="err" id="e4" role="alert"></p><button class="btn" id="cpay" style="width:100%">Pagar fatura</button></div>';
+  h+='<div class="panel"><h2>Simular compra</h2><label for="cdesc" style="margin-top:0">Descrição</label><input id="cdesc" autocomplete="off" placeholder="Ex.: Loja, app, restaurante"><label for="cval">Valor (R$)</label><input id="cval" inputmode="decimal" placeholder="0,00"><p class="err" id="e3" role="alert"></p>'+(cmsg?'<p class="note" style="color:var(--pos);margin:0 0 10px">'+esc(cmsg)+'</p>':'')+'<div class="row"><button class="btn" id="cdeb">Pagar no débito</button><button class="btn alt" id="ccred" style="color:var(--ink)">Pagar no crédito</button></div></div>';
+  return h+'<p class="note">Cartão fictício. Débito sai do saldo; crédito vai para a fatura.</p>';
+}
 function extView(){
   return'<div class="top"><h1>Extrato</h1></div><div class="panel" style="margin-top:0">'+txHtml(S.tx)+'</div>';
 }
 function render(){
   var app=document.getElementById("app");
-  app.innerHTML=tab==="home"?homeView():tab==="pix"?pixView():extView();
-  document.getElementById("nav").innerHTML=[["home","Início"],["pix","Pix"],["ext","Extrato"]].map(function(t){return'<button class="tab" data-go="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':"")+'>'+t[1]+'</button>'}).join("");
+  app.innerHTML=tab==="home"?homeView():tab==="pix"?pixView():tab==="card"?cardView():extView();
+  document.getElementById("nav").innerHTML=[["home","Início"],["pix","Pix"],["card","Cartão"],["ext","Extrato"]].map(function(t){return'<button class="tab" data-go="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':"")+'>'+t[1]+'</button>'}).join("");
   bind();
 }
-function go(t){tab=t;pix=null;done=null;addOpen=false;render();window.scrollTo(0,0)}
+function go(t){tab=t;showNum=false;cmsg="";pix=null;done=null;addOpen=false;render();window.scrollTo(0,0)}
 function $(id){return document.getElementById(id)}
 function bind(){
   document.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){go(b.getAttribute("data-go"))}});
@@ -131,6 +152,29 @@ function bind(){
     add("out","Pix para "+pix.chave,pix.v);
     done={chave:pix.chave,v:pix.v,t:Date.now()};pix=null;render();
   };
+  if($("cshow"))$("cshow").onclick=function(){showNum=!showNum;render()};
+  if($("cfrz"))$("cfrz").onclick=function(){S.card.frozen=!S.card.frozen;cmsg="";save();render()};
+  if($("cpay"))$("cpay").onclick=function(){
+    var c=S.card,e=$("e4");
+    if(c.used<=0){e.textContent="Sua fatura está zerada.";return}
+    if(c.used>S.saldo){e.textContent="Saldo insuficiente para pagar a fatura.";return}
+    add("out","Pagamento da fatura",c.used);c.used=0;cmsg="Fatura paga.";save();render();
+  };
+  function buy(kind){
+    var c=S.card,e=$("e3"),v=parse($("cval").value),d=$("cdesc").value.trim()||"Compra";
+    if(c.frozen){e.textContent="Cartão bloqueado. Desbloqueie para comprar.";return}
+    if(v<=0){e.textContent="Digite um valor maior que zero.";return}
+    if(kind==="deb"){
+      if(v>S.saldo){e.textContent="Saldo insuficiente. Você tem "+money(S.saldo)+" disponível.";return}
+      add("out","Débito: "+d,v);cmsg="Compra aprovada no débito.";
+    }else{
+      if(c.used+v>c.limite){e.textContent="Limite insuficiente. Disponível: "+money(Math.max(0,c.limite-c.used))+".";return}
+      c.used+=v;S.tx.unshift({id:Date.now(),tipo:"cred",desc:"Crédito: "+d,v:v,t:Date.now()});cmsg="Compra aprovada no crédito.";save();
+    }
+    render();
+  }
+  if($("cdeb"))$("cdeb").onclick=function(){buy("deb")};
+  if($("ccred"))$("ccred").onclick=function(){buy("cred")};
   if($("newpix"))$("newpix").onclick=function(){done=null;render()};
 }
 render();
